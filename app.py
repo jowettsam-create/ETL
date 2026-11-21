@@ -51,7 +51,7 @@ import GS2RCAPI as engine  # noqa: E402  (used for the REDCap "next record" look
 
 # Shown on the page so people can check they're running the latest download.
 # **Bump this on every change you push** (date + number for that day).
-APP_VERSION = "2026.11.21-4"
+APP_VERSION = "2026.11.21-5"
 
 # **CHANGE THIS** if the REDCap server moves
 DEFAULT_REDCAP_URL = "https://nswa-redcap.ambulance.nsw.gov.au/redcap/api/"
@@ -59,6 +59,28 @@ DEFAULT_REDCAP_URL = "https://nswa-redcap.ambulance.nsw.gov.au/redcap/api/"
 REDCAP_BATCH = 500
 WORKDIR_PREFIX = "goodsam_etl_"
 WORKDIR_MAX_AGE_HOURS = 12
+
+def bypass_proxy_for(url: str) -> None:
+    """Connect to REDCap directly, never through a web proxy.
+
+    REDCap is an internal NSW server. When HTTPS_PROXY is set in the window that
+    started the app (e.g. so pip could install packages), every REDCap request went
+    through the NSW Health proxy, which answers with a bare "403 Forbidden" page.
+    Adding the host to NO_PROXY fixes that for this process and the engine
+    subprocesses (they inherit os.environ). Set REDCAP_USE_PROXY=1 to turn this off.
+    """
+    from urllib.parse import urlparse
+
+    host = urlparse(url or "").hostname
+    if not host or os.environ.get("REDCAP_USE_PROXY") == "1":
+        return
+    for key in ("NO_PROXY", "no_proxy"):
+        current = [h.strip() for h in os.environ.get(key, "").split(",") if h.strip()]
+        if host not in current:
+            os.environ[key] = ",".join(current + [host])
+
+
+bypass_proxy_for(DEFAULT_REDCAP_URL)
 
 st.set_page_config(page_title="GoodSAM → REDCap", page_icon="🚑", layout="wide")
 
@@ -447,6 +469,8 @@ with st.sidebar:
         if st.button("Run connection check", use_container_width=True):
             connection_check(creds.get("rc_url") or DEFAULT_REDCAP_URL)
     st.caption(f"Version {APP_VERSION}")
+
+bypass_proxy_for(creds.get("rc_url", ""))  # in case a different REDCap URL was entered
 
 have_goodsam = bool(creds["gs_user"] and creds["gs_pass"])
 have_redcap = bool(creds["rc_url"] and creds["rc_token"])
