@@ -118,6 +118,7 @@ in the sidebar for that session only. Set `APP_PASSWORD` whenever others reach i
   Credentials go in the environment and are masked in the displayed log.
 - In CSV mode the app strips GoodSAM credentials from the subprocess env — otherwise the engine would use
   the API instead of the uploaded files.
+- `APP_VERSION` near the top of `app.py` is shown on the page — bump it (`YYYY.MM.DD-n`) on every pushed change.
 - Never use `st.stop()` inside a tab — it stops the whole script and hides the other tabs.
 - "Now" is NSW time (`Australia/Sydney`) regardless of the server's timezone.
 - Never deploy to Streamlit Community Cloud (public, third-party hosting; PHI). The Deploy button is hidden.

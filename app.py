@@ -49,6 +49,10 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 import GS2RCAPI as engine  # noqa: E402  (used for the REDCap "next record" lookups)
 
+# Shown on the page so people can check they're running the latest download.
+# **Bump this on every change you push** (date + number for that day).
+APP_VERSION = "2026.11.21-3"
+
 # **CHANGE THIS** if the REDCap server moves
 DEFAULT_REDCAP_URL = "https://nswa-redcap.ambulance.nsw.gov.au/redcap/api/"
 # Same batch size the desktop GUIs use
@@ -87,6 +91,7 @@ def require_app_password() -> None:
     if not expected or st.session_state.get("authed"):
         return
     st.title("GoodSAM → REDCap")
+    st.caption(f"App version {APP_VERSION}")
     pw = st.text_input("Access password", type="password")
     if st.button("Sign in", type="primary"):
         if hmac.compare_digest(pw.encode(), expected.encode()):
@@ -367,6 +372,7 @@ def daily_run(creds: dict, dry_run: bool, save_json: bool) -> None:
 require_app_password()
 
 st.title("🚑 GoodSAM → REDCap")
+st.caption(f"App version {APP_VERSION}")
 
 with st.sidebar:
     st.header("Credentials")
@@ -396,6 +402,8 @@ with st.sidebar:
         clear_workdir()
         st.rerun()
     st.caption(f"Output files are deleted automatically after {WORKDIR_MAX_AGE_HOURS} hours.")
+    st.divider()
+    st.caption(f"Version {APP_VERSION}")
 
 have_goodsam = bool(creds["gs_user"] and creds["gs_pass"])
 have_redcap = bool(creds["rc_url"] and creds["rc_token"])
