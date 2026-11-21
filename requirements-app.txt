@@ -2,3 +2,4 @@
 # Install with: pip install -r requirements-app.txt
 -r requirements.txt
 streamlit>=1.36
+tzdata  # timezone data for Australia/Sydney on Linux servers/containers

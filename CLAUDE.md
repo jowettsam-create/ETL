@@ -23,6 +23,8 @@ Current work and open problems are tracked in `TODO.md` — read it first.
 | `GS2RCAPI.py` | Core engine (~3,250 lines): fetch, transform, write CSV, upload. Also importable — the GUIs call `main()` directly when frozen. |
 | `GS2RCAPI_GUI.py` | "ADV" GUI (Tkinter): API or CSV input, date pickers, manual Build / Upload, welfare list, master list copy. |
 | `app.py` | **Streamlit web app** — stopgap replacement for both GUIs on PCs that can no longer run the `.exe`. Runs `GS2RCAPI.py` as a subprocess, credentials via env vars. |
+| `HOSTING.md` | **For IT:** what's needed to host the web app (network, secrets, Docker, access). |
+| `Dockerfile`, `.dockerignore` | Container build for the web app (tested: non-root, health check, no data/secrets in image). |
 | `start_app.bat` | Double-click on Windows to start the app (localhost only; share via a tunnel such as ngrok). |
 | `.streamlit/` | `config.toml` (app settings) and `secrets.toml.example`. Real `secrets.toml` is git-ignored. |
 | `GS2RCAPI_GUI_Lite.py` | "LITE" GUI: one button. Asks REDCap for the last record, fetches everything since, builds, uploads. Production daily run. |
@@ -125,10 +127,8 @@ in the sidebar for that session only. Set `APP_PASSWORD` whenever others reach i
   `REDCAP_USE_PROXY=1` turns this off.
 - Never use `st.stop()` inside a tab — it stops the whole script and hides the other tabs.
 - "Now" is NSW time (`Australia/Sydney`) regardless of the server's timezone.
-- Hosted on Streamlit Community Cloud (deploy from branch `claude/gifted-mayer-wxjot8`, main file `app.py`). GoodSAM and
-  REDCap are both external services, so this is acceptable; privacy is managed by the owner. On Cloud, saved
-  credentials in Secrets are **only used when `APP_PASSWORD` is set** (`on_streamlit_cloud()` = repo under `/mount/src`);
-  keep the app's sharing set to private/invited viewers.
+- **Streamlit Community Cloud doesn't work**: REDCap rejects its (US) servers. `on_streamlit_cloud()` still makes
+  saved Secrets require `APP_PASSWORD` there. Current interim hosting: Sam's PC + ngrok (see `TODO.md`); long term see `HOSTING.md`.
 
 ### Building the executables
 

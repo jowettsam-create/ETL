@@ -22,6 +22,7 @@
   - [ ] Cloud app (goodsamfix.streamlit.app): keep sharing private and `APP_PASSWORD` set; don't use Daily run there.
 
 - [ ] **Self-hosted website on a Raspberry Pi (free, permanent fix for "go to a website and upload").**
+  - Sam has an old Pi at home – continue this when home. Check the model (Pi 3 may be slow; 64-bit OS needed for pandas wheels).
   - Pi 4/5 (2 GB+), Raspberry Pi OS 64-bit, on home internet in Australia (REDCap + GoodSAM both reachable).
   - Run `app.py` as a systemd service (start at boot, restart on crash).
   - Public link via a free tunnel: **ngrok** (one permanent free `*.ngrok-free.app` address) or Cloudflare Tunnel
@@ -90,12 +91,11 @@
   - Already fine: TLS 1.2/1.3 (`ssl=False` only skips cert checks); code doesn't use `dev.goodsamgateway`.
 
 ## Next up (after connection issue is sorted)
-- [ ] **OHCA Metro/Rural rule (`rule` field was always blank).**
+- [x] **OHCA Metro/Rural rule (`rule` field was always blank).**
   - [x] Fixed 22 Nov 2026 (app 2026.11.22-2): `_dispatch_rule_name()` reads `dispatchRules` (a list like
         `[{"name": "NSWAOHCA"}]`) instead of the non-existent `dispatchRule`. Several rules are joined with "; ".
   - Values: `NSWAOHCA` = Metro, `NSWAOHCRural` = Rural (14 Nov 2026: 38 Metro, 19 Rural). The raw name is sent.
-  - [ ] Check the REDCap `rule` field is a **text box**. If it's a dropdown with codes (e.g. 1=Metro, 2=Rural), the
-        upload will be rejected – then map the names to the codes in `_dispatch_rule_name()`.
-  - [ ] Backfill `rule` for records already uploaded with it blank (incl. the 68 uploaded on 22 Nov 2026).
+  - [x] REDCap `rule` is a text box, so the raw name is fine (confirmed 22 Nov 2026).
+  - Older records: not backfilled (decided 22 Nov 2026) – only new uploads get `rule`.
 
 - [ ] **Hide the password and token in the console.** The "Args:" line prints the GoodSAM password (and the REDCap token on upload) in plain text. Mask them in both GUIs.
