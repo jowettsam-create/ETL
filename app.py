@@ -294,13 +294,39 @@ def show_results() -> None:
         st.code(st.session_state.get("last_log", ""), language=None)
 
 
+def describe_error(exc: Exception) -> str:
+    """Error text plus what the server actually said (REDCap explains 403s in the body)."""
+    msg = str(exc)
+    resp = getattr(exc, "response", None)
+    if resp is None:
+        return msg
+    body = (getattr(resp, "text", "") or "").strip()
+    if not body:
+        return msg
+    if "<html" in body[:500].lower():
+        import re
+        title = re.search(r"<title[^>]*>(.*?)</title>", body, re.I | re.S)
+        text = re.sub(r"<[^>]+>", " ", body)
+        text = re.sub(r"\s+", " ", text).strip()
+        detail = f"a web page{' titled “' + title.group(1).strip() + '”' if title else ''}: {text[:300]}"
+        hint = ("\n\nThat's a web page rather than a REDCap API reply, so something between this computer and "
+                "REDCap (e.g. a proxy or firewall) probably blocked the request.")
+    else:
+        detail = body[:300]
+        hint = ""
+        if "permission" in body.lower() or "token" in body.lower():
+            hint = ("\n\nREDCap rejected the API token. Check it's copied exactly (no spaces), belongs to this "
+                    "project, and that your REDCap user still has API Export and Import rights.")
+    return f"{msg}\n\nServer said {detail}{hint}"
+
+
 def daily_run(creds: dict, dry_run: bool, save_json: bool) -> None:
     """What the LITE app's button does. Returns early (never st.stop) so the other tabs still render."""
     try:
         with st.spinner("Asking REDCap for the latest record…"):
             ctx = engine.get_latest_record_context(creds["rc_url"], creds["rc_token"], verify=True)
     except Exception as exc:
-        st.error(f"Could not read the latest record from REDCap: {exc}")
+        st.error(f"Could not read the latest record from REDCap: {describe_error(exc)}")
         return
 
     next_id = int(ctx.get("next_record_id") or 1)
@@ -403,7 +429,7 @@ with tab_custom:
             st.session_state.custom_start_id = int(
                 engine.get_next_record_id(creds["rc_url"], creds["rc_token"], verify=True))
         except Exception as exc:
-            st.error(f"Could not get the next record ID: {exc}")
+            st.error(f"Could not get the next record ID: {describe_error(exc)}")
     start_id = c3.number_input("Starting record_id", min_value=1, step=1, key="custom_start_id")
 
     source = st.radio("Data source", ["GoodSAM API", "CSV files exported from GoodSAM"], horizontal=True)
