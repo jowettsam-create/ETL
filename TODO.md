@@ -83,9 +83,12 @@
   - Already fine: TLS 1.2/1.3 (`ssl=False` only skips cert checks); code doesn't use `dev.goodsamgateway`.
 
 ## Next up (after connection issue is sorted)
-- [ ] **Fix the OHCA Metro/Rural rule (`rule` field is always blank).**
-  - GoodSAM sends `dispatchRules`, a list like `[{"name": "NSWAOHCA", ...}]`, but `GS2RCAPI.py` (~line 376) reads `dispatchRule`, so "Rule Used" ends up empty.
-  - Values seen: `NSWAOHCA` = Metro, `NSWAOHCRural` = Rural (14 Nov 2026: 38 Metro, 19 Rural).
-  - **Need to find out first:** is REDCap `rule` a text box or a dropdown, and should it hold the raw name or Metro/Rural?
-  - Then: decide whether to backfill blank `rule` values on records already uploaded.
+- [ ] **OHCA Metro/Rural rule (`rule` field was always blank).**
+  - [x] Fixed 22 Nov 2026 (app 2026.11.22-2): `_dispatch_rule_name()` reads `dispatchRules` (a list like
+        `[{"name": "NSWAOHCA"}]`) instead of the non-existent `dispatchRule`. Several rules are joined with "; ".
+  - Values: `NSWAOHCA` = Metro, `NSWAOHCRural` = Rural (14 Nov 2026: 38 Metro, 19 Rural). The raw name is sent.
+  - [ ] Check the REDCap `rule` field is a **text box**. If it's a dropdown with codes (e.g. 1=Metro, 2=Rural), the
+        upload will be rejected – then map the names to the codes in `_dispatch_rule_name()`.
+  - [ ] Backfill `rule` for records already uploaded with it blank (incl. the 68 uploaded on 22 Nov 2026).
+
 - [ ] **Hide the password and token in the console.** The "Args:" line prints the GoodSAM password (and the REDCap token on upload) in plain text. Mask them in both GUIs.

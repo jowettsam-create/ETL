@@ -517,6 +517,30 @@ async def load_goodsam_data(username, password, start_date, end_date, client_id=
 # Functions to convert nested JSON API responses into flat DataFrames
 # with column names matching the expected downstream processing
 
+def _dispatch_rule_name(alert: dict) -> str:
+    """
+    Dispatch rule name(s) for an alert, e.g. "NSWAOHCA" (Metro) or "NSWAOHCRural" (Rural).
+
+    GoodSAM sends `dispatchRules` as a list of objects: [{"name": "NSWAOHCA", ...}].
+    (Older code read a singular `dispatchRule` key, which doesn't exist, so the REDCap
+    `rule` field was always blank.) Several rules are joined with "; ".
+    """
+    rules = alert.get("dispatchRules")
+    if rules is None:
+        rules = alert.get("dispatchRule", "")  # legacy / just in case
+    if isinstance(rules, dict):
+        rules = [rules]
+    if isinstance(rules, list):
+        names = []
+        for r in rules:
+            name = r.get("name", "") if isinstance(r, dict) else r
+            name = str(name or "").strip()
+            if name and name not in names:
+                names.append(name)
+        return "; ".join(names)
+    return str(rules or "").strip()
+
+
 def flatten_goodsam_alerts(alerts_json: list | dict | None) -> pd.DataFrame:
     """
     Convert GoodSAM alerts JSON to a flat DataFrame.
@@ -561,7 +585,7 @@ def flatten_goodsam_alerts(alerts_json: list | dict | None) -> pd.DataFrame:
             "Integer ID": a.get("alertUniqueIntegerId", ""),
             "String ID": a.get("ID", ""),
             "Reference": a.get("reference", ""),
-            "Rule Used": a.get("dispatchRule", ""),
+            "Rule Used": _dispatch_rule_name(a),
             "Latitude": a.get("alertLatitude", ""),
             "Longitude": a.get("alertLongitude", ""),
             "Registered Time(Australia/Sydney)": a.get("alertTimeFormattedDate", ""),
