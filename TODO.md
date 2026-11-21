@@ -11,7 +11,14 @@
     - **Work PC:** REDCap ✅ from Python direct; app versions before 2026.11.21-5 sent REDCap through the
       NSW Health proxy when `HTTPS_PROXY` was set → bare 403 (fixed: REDCap host added to `NO_PROXY`).
       GoodSAM ❌ via Zscaler – workaround: export Alerts/Responders CSVs in the browser → app CSV mode.
-  - [ ] Get the full Daily run working on Sam's private PC (`python -m streamlit run app.py`).
+  - [x] Full Daily run works on Sam's private PC (22 Nov 2026: 68 records uploaded).
+  - **Current workaround (22 Nov 2026):** app runs on Sam's private PC (`start_app.bat`, credentials + `APP_PASSWORD`
+    in `%USERPROFILE%\.streamlit\secrets.toml`) and is shared through **ngrok** at
+    `https://armory-simmering-entitle.ngrok-free.dev`. Works from **phones/tablets on mobile data**.
+    **Zscaler blocks ngrok on work PCs and work Wi-Fi** (deliberate – don't try other tunnels).
+    Requires the PC on/awake with both the app and ngrok running. One person does the daily upload.
+  - [ ] Work PCs: either run the app locally with GoodSAM CSV exports (browser) → Custom date range → CSV mode,
+        or raise the IT ticket to allow `goodsamgateway.org` through Zscaler (ticket text drafted in chat 22 Nov).
   - [ ] Cloud app (goodsamfix.streamlit.app): keep sharing private and `APP_PASSWORD` set; don't use Daily run there.
 
 - [ ] **Self-hosted website on a Raspberry Pi (free, permanent fix for "go to a website and upload").**
