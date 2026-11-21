@@ -124,7 +124,10 @@ in the sidebar for that session only. Set `APP_PASSWORD` whenever others reach i
   `REDCAP_USE_PROXY=1` turns this off.
 - Never use `st.stop()` inside a tab — it stops the whole script and hides the other tabs.
 - "Now" is NSW time (`Australia/Sydney`) regardless of the server's timezone.
-- Never deploy to Streamlit Community Cloud (public, third-party hosting; PHI). The Deploy button is hidden.
+- Hosted on Streamlit Community Cloud (deploy from branch `claude/gifted-mayer-wxjot8`, main file `app.py`). GoodSAM and
+  REDCap are both external services, so this is acceptable; privacy is managed by the owner. On Cloud, saved
+  credentials in Secrets are **only used when `APP_PASSWORD` is set** (`on_streamlit_cloud()` = repo under `/mount/src`);
+  keep the app's sharing set to private/invited viewers.
 
 ### Building the executables
 

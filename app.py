@@ -51,7 +51,7 @@ import GS2RCAPI as engine  # noqa: E402  (used for the REDCap "next record" look
 
 # Shown on the page so people can check they're running the latest download.
 # **Bump this on every change you push** (date + number for that day).
-APP_VERSION = "2026.11.21-5"
+APP_VERSION = "2026.11.21-6"
 
 # **CHANGE THIS** if the REDCap server moves
 DEFAULT_REDCAP_URL = "https://nswa-redcap.ambulance.nsw.gov.au/redcap/api/"
@@ -108,6 +108,11 @@ def now_sydney() -> datetime:
 # ---------------------------------------------------------------------------
 # Optional access password (set APP_PASSWORD when the page is shared on a network)
 # ---------------------------------------------------------------------------
+def on_streamlit_cloud() -> bool:
+    """Streamlit Community Cloud checks the repo out under /mount/src."""
+    return HERE.replace("\\", "/").startswith("/mount/src")
+
+
 def require_app_password() -> None:
     expected = setting("APP_PASSWORD")
     if not expected or st.session_state.get("authed"):
@@ -443,6 +448,12 @@ with st.sidebar:
         "rc_url": setting("REDCAP_API_URL", DEFAULT_REDCAP_URL) or DEFAULT_REDCAP_URL,
         "rc_token": setting("REDCAP_API_TOKEN"),
     }
+    if on_streamlit_cloud() and not setting("APP_PASSWORD"):
+        # Public URL with no access password: don't let visitors use saved credentials.
+        if cfg["gs_pass"] or cfg["rc_token"]:
+            st.error("Saved credentials are ignored because APP_PASSWORD isn't set. "
+                     "Add APP_PASSWORD to the app's Secrets, or type credentials below.")
+        cfg.update(gs_user="", gs_pass="", rc_token="")
     creds = dict(cfg)
 
     if cfg["gs_user"] and cfg["gs_pass"]:
