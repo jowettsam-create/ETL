@@ -51,7 +51,7 @@ import GS2RCAPI as engine  # noqa: E402  (used for the REDCap "next record" look
 
 # Shown on the page so people can check they're running the latest download.
 # **Bump this on every change you push** (date + number for that day).
-APP_VERSION = "2026.11.21-3"
+APP_VERSION = "2026.11.21-4"
 
 # **CHANGE THIS** if the REDCap server moves
 DEFAULT_REDCAP_URL = "https://nswa-redcap.ambulance.nsw.gov.au/redcap/api/"
@@ -325,6 +325,45 @@ def describe_error(exc: Exception) -> str:
     return f"{msg}\n\nServer said {detail}{hint}"
 
 
+def connection_check(rc_url: str) -> None:
+    """Test REDCap and GoodSAM from the Python that runs this app (fake token, no real data)."""
+    import platform
+    import requests
+
+    st.write(f"**Python:** `{sys.executable}` ({platform.python_version()})")
+    import re
+
+    def _hide_login(v: str) -> str:  # proxy URLs can carry user:password@
+        return re.sub(r"//[^/@\s]+@", "//***@", str(v))
+
+    env_proxies = {k: _hide_login(v) for k, v in os.environ.items() if "proxy" in k.lower()}
+    st.write(f"**Proxy environment variables:** `{env_proxies or 'none'}`")
+    try:
+        import urllib.request
+        used = {k: _hide_login(v) for k, v in urllib.request.getproxies().items()}
+        st.write(f"**Proxies Python will use:** `{used or 'none'}`")
+    except Exception:
+        pass
+
+    def probe(label: str, method: str, url: str, trust_env: bool, **kw) -> None:
+        s = requests.Session()
+        s.trust_env = trust_env
+        try:
+            r = s.request(method, url, timeout=30, **kw)
+            body = " ".join((r.text or "").split())[:200]
+            st.write(f"**{label}:** HTTP {r.status_code} — `{body}`")
+        except Exception as exc:
+            st.write(f"**{label}:** FAILED — `{exc}`")
+
+    fake = {"token": "0" * 32, "content": "version"}
+    probe("REDCap (normal)", "POST", rc_url, True, data=fake)
+    probe("REDCap (ignoring proxies)", "POST", rc_url, False, data=fake)
+    probe("GoodSAM (normal)", "GET", engine.BASE_URL, True)
+    st.caption("For REDCap, “You do not have permissions to use the API” is the expected reply (the test uses a "
+               "fake token) and means REDCap was reached. A bare “403 Forbidden” page means something in between "
+               "blocked it.")
+
+
 def daily_run(creds: dict, dry_run: bool, save_json: bool) -> None:
     """What the LITE app's button does. Returns early (never st.stop) so the other tabs still render."""
     try:
@@ -403,6 +442,10 @@ with st.sidebar:
         st.rerun()
     st.caption(f"Output files are deleted automatically after {WORKDIR_MAX_AGE_HOURS} hours.")
     st.divider()
+    with st.expander("🔧 Connection check"):
+        st.caption("Tests whether this computer can reach REDCap and GoodSAM. Sends no real credentials.")
+        if st.button("Run connection check", use_container_width=True):
+            connection_check(creds.get("rc_url") or DEFAULT_REDCAP_URL)
     st.caption(f"Version {APP_VERSION}")
 
 have_goodsam = bool(creds["gs_user"] and creds["gs_pass"])
