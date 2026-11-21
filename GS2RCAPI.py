@@ -1265,8 +1265,11 @@ def post_to_redcap(
 
     total_imported = 0
 
-    # Try PyCap first if available (lets REDCap handle chunking server-side where possible)
-    if REDCapProject is not None:
+    # Imports use the direct API POST below, not PyCap: it's the path with 504 recovery
+    # (_confirm_chunk_uploaded), and PyCap 2.x renamed import_records' arguments, so the
+    # PyCap path always failed and fell back here anyway. Set GS2RC_USE_PYCAP_IMPORT=1
+    # to try PyCap first again.
+    if REDCapProject is not None and os.environ.get("GS2RC_USE_PYCAP_IMPORT") == "1":
         try:
             safe_print("[REDCap] Using PyCap library")
             # Some versions accept verify_ssl kw; fall back silently if not
@@ -1415,10 +1418,14 @@ def export_record_id_map_by_integerid(api_url: str, api_token: str, verify: bool
             except TypeError:
                 proj = REDCapProject(api_url, api_token)
             try:
-                recs = proj.export_records(fields=['record_id', 'integerid'], filter_logic=logic, format='json')
+                # PyCap 2.x uses format_type=; 1.x used format=
+                recs = proj.export_records(fields=['record_id', 'integerid'], filter_logic=logic, format_type='json')
             except TypeError:
-                # Older versions may use different keyword; try without logic as a fallback
-                recs = proj.export_records(fields=['record_id', 'integerid'], format='json')
+                try:
+                    recs = proj.export_records(fields=['record_id', 'integerid'], filter_logic=logic, format='json')
+                except TypeError:
+                    # Older versions may use different keyword; try without logic as a fallback
+                    recs = proj.export_records(fields=['record_id', 'integerid'], format='json')
             mapping = {}
             for r in recs:
                 iid = str(r.get('integerid', '')).strip()
@@ -1481,7 +1488,10 @@ def get_redcap_fieldset(api_url: str, api_token: str, verify: bool = True) -> se
                 proj = REDCapProject(api_url, api_token, verify_ssl=verify)
             except TypeError:
                 proj = REDCapProject(api_url, api_token)
-            meta = proj.export_metadata(format='json')
+            try:
+                meta = proj.export_metadata(format_type='json')  # PyCap 2.x
+            except TypeError:
+                meta = proj.export_metadata(format='json')  # PyCap 1.x
             return {str(m.get('field_name', '')).strip() for m in (meta or []) if m.get('field_name')}
         except (ValueError, AttributeError, RuntimeError):  # REDCap API errors
             pass
@@ -3134,8 +3144,10 @@ def main():
             # Show the first few to verify mapping worked
             preview_cols = ["record_id", "redcap_repeat_instance", "name1", "name2", "phone", "eml", "category", "assign_1", "accept_1", "gsresp_1", "welreq"]
             _cols = [c for c in preview_cols if c in flagged.columns]
-            safe_print("[WELREQ] Sample (up to 5):")
-            safe_print(flagged[_cols].head(5).to_string(index=False))
+            # Only record IDs here: names/phones/emails are in welreq_followup.csv and the
+            # GUI welfare panel. Logs get copied around, so keep PHI out of them.
+            safe_print("[WELREQ] Record IDs: " + ", ".join(
+                flagged["record_id"].astype(str).head(20).tolist() if "record_id" in flagged.columns else []))
 
         # Emit follow-up CSV next to main output (always refresh for this run)
         try:
