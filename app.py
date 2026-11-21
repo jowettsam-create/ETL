@@ -51,7 +51,7 @@ import GS2RCAPI as engine  # noqa: E402  (used for the REDCap "next record" look
 
 # Shown on the page so people can check they're running the latest download.
 # **Bump this on every change you push** (date + number for that day).
-APP_VERSION = "2026.11.21-6"
+APP_VERSION = "2026.11.21-7"
 
 # **CHANGE THIS** if the REDCap server moves
 DEFAULT_REDCAP_URL = "https://nswa-redcap.ambulance.nsw.gov.au/redcap/api/"
@@ -171,6 +171,9 @@ def engine_env(creds: dict) -> dict:
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"  # the engine prints emoji; Windows consoles choke otherwise
     env["PYTHONUNBUFFERED"] = "1"
+    # Newer pandas/aiohttp print pages of "deprecated, will change in a future version"
+    # notices; they're not errors and they bury the useful log lines.
+    env["PYTHONWARNINGS"] = "ignore"
     mapping = {
         "GOODSAM_USERNAME": creds.get("gs_user", ""),
         "GOODSAM_PASSWORD": creds.get("gs_pass", ""),
