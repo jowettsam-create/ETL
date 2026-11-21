@@ -1,0 +1,31 @@
+# --- PHI / data: never commit ---
+*.csv
+*.xlsx
+*.xls
+*.parquet
+*.json
+_debug/
+*.log
+
+# --- Build output ---
+build/
+dist/
+release/
+*.exe
+*.zip
+
+# --- Python ---
+__pycache__/
+*.pyc
+venv/
+.venv/
+env/
+
+# --- Secrets / local config ---
+.env
+*.env
+config.ini
+.claude/settings.local.json
+
+# --- Streamlit ---
+.streamlit/secrets.toml

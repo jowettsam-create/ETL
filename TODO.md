@@ -1,6 +1,36 @@
 # GoodSAM ETL – To-do list
 
 ## In progress
+- [ ] **Streamlit web app (`app.py`) – stopgap for PCs that can't run the exe.**
+  - Found 21 Nov 2026 (Connection check in the app):
+    - **Streamlit Community Cloud** (US servers): GoodSAM ✅, REDCap ❌ – REDCap's own server returns a bare
+      "403 Forbidden" to overseas servers. Streamlit Cloud's outbound IPs change without notice, so allowlisting
+      isn't viable. Cloud can still build the CSV; import it via REDCap's Data Import Tool (DD/MM/YYYY).
+    - **Home internet (Australia):** REDCap API ✅ (answers "You do not have permissions to use the API" to a fake
+      token). GoodSAM ✅.
+    - **Work PC:** REDCap ✅ from Python direct; app versions before 2026.11.21-5 sent REDCap through the
+      NSW Health proxy when `HTTPS_PROXY` was set → bare 403 (fixed: REDCap host added to `NO_PROXY`).
+      GoodSAM ❌ via Zscaler – workaround: export Alerts/Responders CSVs in the browser → app CSV mode.
+  - [x] Full Daily run works on Sam's private PC (22 Nov 2026: 68 records uploaded).
+  - **Current workaround (22 Nov 2026):** app runs on Sam's private PC (`start_app.bat`, credentials + `APP_PASSWORD`
+    in `%USERPROFILE%\.streamlit\secrets.toml`) and is shared through **ngrok** at
+    `https://armory-simmering-entitle.ngrok-free.dev`. Works from **phones/tablets on mobile data**.
+    **Zscaler blocks ngrok on work PCs and work Wi-Fi** (deliberate – don't try other tunnels).
+    Requires the PC on/awake with both the app and ngrok running. One person does the daily upload.
+  - [ ] Work PCs: either run the app locally with GoodSAM CSV exports (browser) → Custom date range → CSV mode,
+        or raise the IT ticket to allow `goodsamgateway.org` through Zscaler (ticket text drafted in chat 22 Nov).
+  - [ ] Cloud app (goodsamfix.streamlit.app): keep sharing private and `APP_PASSWORD` set; don't use Daily run there.
+
+- [ ] **Self-hosted website on a Raspberry Pi (free, permanent fix for "go to a website and upload").**
+  - Sam has an old Pi at home – continue this when home. Check the model (Pi 3 may be slow; 64-bit OS needed for pandas wheels).
+  - Pi 4/5 (2 GB+), Raspberry Pi OS 64-bit, on home internet in Australia (REDCap + GoodSAM both reachable).
+  - Run `app.py` as a systemd service (start at boot, restart on crash).
+  - Public link via a free tunnel: **ngrok** (one permanent free `*.ngrok-free.app` address) or Cloudflare Tunnel
+    (quick tunnels are free but the address changes; permanent needs a domain).
+  - `APP_PASSWORD` mandatory; credentials in `.streamlit/secrets.toml` on the Pi only.
+  - Check a work PC's browser can open the tunnel link (Zscaler may block tunnel domains).
+  - Ask Claude for: Pi setup script + service file, ngrok steps, one-page user instructions.
+
 - [ ] **Connection problems on other computers.** Fixes are in release 2026.11.15:
   - Windows certificate store via `truststore`, for networks that intercept HTTPS
   - GoodSAM download now follows the system proxy settings
@@ -61,9 +91,11 @@
   - Already fine: TLS 1.2/1.3 (`ssl=False` only skips cert checks); code doesn't use `dev.goodsamgateway`.
 
 ## Next up (after connection issue is sorted)
-- [ ] **Fix the OHCA Metro/Rural rule (`rule` field is always blank).**
-  - GoodSAM sends `dispatchRules`, a list like `[{"name": "NSWAOHCA", ...}]`, but `GS2RCAPI.py` (~line 376) reads `dispatchRule`, so "Rule Used" ends up empty.
-  - Values seen: `NSWAOHCA` = Metro, `NSWAOHCRural` = Rural (14 Nov 2026: 38 Metro, 19 Rural).
-  - **Need to find out first:** is REDCap `rule` a text box or a dropdown, and should it hold the raw name or Metro/Rural?
-  - Then: decide whether to backfill blank `rule` values on records already uploaded.
+- [x] **OHCA Metro/Rural rule (`rule` field was always blank).**
+  - [x] Fixed 22 Nov 2026 (app 2026.11.22-2): `_dispatch_rule_name()` reads `dispatchRules` (a list like
+        `[{"name": "NSWAOHCA"}]`) instead of the non-existent `dispatchRule`. Several rules are joined with "; ".
+  - Values: `NSWAOHCA` = Metro, `NSWAOHCRural` = Rural (14 Nov 2026: 38 Metro, 19 Rural). The raw name is sent.
+  - [x] REDCap `rule` is a text box, so the raw name is fine (confirmed 22 Nov 2026).
+  - Older records: not backfilled (decided 22 Nov 2026) – only new uploads get `rule`.
+
 - [ ] **Hide the password and token in the console.** The "Args:" line prints the GoodSAM password (and the REDCap token on upload) in plain text. Mask them in both GUIs.

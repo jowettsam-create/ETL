@@ -517,6 +517,30 @@ async def load_goodsam_data(username, password, start_date, end_date, client_id=
 # Functions to convert nested JSON API responses into flat DataFrames
 # with column names matching the expected downstream processing
 
+def _dispatch_rule_name(alert: dict) -> str:
+    """
+    Dispatch rule name(s) for an alert, e.g. "NSWAOHCA" (Metro) or "NSWAOHCRural" (Rural).
+
+    GoodSAM sends `dispatchRules` as a list of objects: [{"name": "NSWAOHCA", ...}].
+    (Older code read a singular `dispatchRule` key, which doesn't exist, so the REDCap
+    `rule` field was always blank.) Several rules are joined with "; ".
+    """
+    rules = alert.get("dispatchRules")
+    if rules is None:
+        rules = alert.get("dispatchRule", "")  # legacy / just in case
+    if isinstance(rules, dict):
+        rules = [rules]
+    if isinstance(rules, list):
+        names = []
+        for r in rules:
+            name = r.get("name", "") if isinstance(r, dict) else r
+            name = str(name or "").strip()
+            if name and name not in names:
+                names.append(name)
+        return "; ".join(names)
+    return str(rules or "").strip()
+
+
 def flatten_goodsam_alerts(alerts_json: list | dict | None) -> pd.DataFrame:
     """
     Convert GoodSAM alerts JSON to a flat DataFrame.
@@ -561,7 +585,7 @@ def flatten_goodsam_alerts(alerts_json: list | dict | None) -> pd.DataFrame:
             "Integer ID": a.get("alertUniqueIntegerId", ""),
             "String ID": a.get("ID", ""),
             "Reference": a.get("reference", ""),
-            "Rule Used": a.get("dispatchRule", ""),
+            "Rule Used": _dispatch_rule_name(a),
             "Latitude": a.get("alertLatitude", ""),
             "Longitude": a.get("alertLongitude", ""),
             "Registered Time(Australia/Sydney)": a.get("alertTimeFormattedDate", ""),
@@ -1265,8 +1289,11 @@ def post_to_redcap(
 
     total_imported = 0
 
-    # Try PyCap first if available (lets REDCap handle chunking server-side where possible)
-    if REDCapProject is not None:
+    # Imports use the direct API POST below, not PyCap: it's the path with 504 recovery
+    # (_confirm_chunk_uploaded), and PyCap 2.x renamed import_records' arguments, so the
+    # PyCap path always failed and fell back here anyway. Set GS2RC_USE_PYCAP_IMPORT=1
+    # to try PyCap first again.
+    if REDCapProject is not None and os.environ.get("GS2RC_USE_PYCAP_IMPORT") == "1":
         try:
             safe_print("[REDCap] Using PyCap library")
             # Some versions accept verify_ssl kw; fall back silently if not
@@ -1415,10 +1442,14 @@ def export_record_id_map_by_integerid(api_url: str, api_token: str, verify: bool
             except TypeError:
                 proj = REDCapProject(api_url, api_token)
             try:
-                recs = proj.export_records(fields=['record_id', 'integerid'], filter_logic=logic, format='json')
+                # PyCap 2.x uses format_type=; 1.x used format=
+                recs = proj.export_records(fields=['record_id', 'integerid'], filter_logic=logic, format_type='json')
             except TypeError:
-                # Older versions may use different keyword; try without logic as a fallback
-                recs = proj.export_records(fields=['record_id', 'integerid'], format='json')
+                try:
+                    recs = proj.export_records(fields=['record_id', 'integerid'], filter_logic=logic, format='json')
+                except TypeError:
+                    # Older versions may use different keyword; try without logic as a fallback
+                    recs = proj.export_records(fields=['record_id', 'integerid'], format='json')
             mapping = {}
             for r in recs:
                 iid = str(r.get('integerid', '')).strip()
@@ -1481,7 +1512,10 @@ def get_redcap_fieldset(api_url: str, api_token: str, verify: bool = True) -> se
                 proj = REDCapProject(api_url, api_token, verify_ssl=verify)
             except TypeError:
                 proj = REDCapProject(api_url, api_token)
-            meta = proj.export_metadata(format='json')
+            try:
+                meta = proj.export_metadata(format_type='json')  # PyCap 2.x
+            except TypeError:
+                meta = proj.export_metadata(format='json')  # PyCap 1.x
             return {str(m.get('field_name', '')).strip() for m in (meta or []) if m.get('field_name')}
         except (ValueError, AttributeError, RuntimeError):  # REDCap API errors
             pass
@@ -2123,8 +2157,13 @@ def main():
     ap.add_argument("--responders", help="Path to Responder.csv (optional if using API mode)")
     ap.add_argument("--out", help="Output CSV path")
     ap.add_argument("--start-id", type=int, help="Starting REDCap record_id (required when building)")
-    ap.add_argument("--username", help="GoodSAM API username (email)")
-    ap.add_argument("--password", help="GoodSAM API password (or an API client secret gsk_..., with the client id as --username)")
+    # Credentials can also come from environment variables so callers (e.g. the
+    # Streamlit app) don't have to put secrets on the command line.
+    ap.add_argument("--username", default=os.environ.get("GOODSAM_USERNAME"),
+                    help="GoodSAM API username (email) (or env GOODSAM_USERNAME)")
+    ap.add_argument("--password", default=os.environ.get("GOODSAM_PASSWORD"),
+                    help="GoodSAM API password (or an API client secret gsk_..., with the client id as --username) "
+                         "(or env GOODSAM_PASSWORD)")
     ap.add_argument("--client-id", default=os.environ.get("GOODSAM_CLIENT_ID"),
                     help="GoodSAM OAuth API client id (or env GOODSAM_CLIENT_ID)")
     ap.add_argument("--client-secret", default=os.environ.get("GOODSAM_CLIENT_SECRET"),
@@ -2133,9 +2172,11 @@ def main():
     ap.add_argument("--end-date", help="End date (yyyy-MM-dd HH:mm:ss)")
     # REDCap API import options
     # **CHANGE THIS** if your REDCap server URL changes
-    ap.add_argument("--redcap-url", help="REDCap API URL (e.g. https://server/redcap/api/")
+    ap.add_argument("--redcap-url", default=os.environ.get("REDCAP_API_URL"),
+                    help="REDCap API URL (e.g. https://server/redcap/api/) (or env REDCAP_API_URL)")
     # REDCap API token (get this from your REDCap project's API settings page)
-    ap.add_argument("--redcap-token", help="REDCap API token")
+    ap.add_argument("--redcap-token", default=os.environ.get("REDCAP_API_TOKEN"),
+                    help="REDCap API token (or env REDCAP_API_TOKEN)")
     ap.add_argument("--redcap-batch-size", type=int, default=100, help="REDCap import batch size (default 100)")
     ap.add_argument("--redcap-insecure", action="store_true", help="Disable TLS verification for REDCap requests")
     # **CHANGE THIS** if your longitudinal project event name changes
@@ -3127,8 +3168,10 @@ def main():
             # Show the first few to verify mapping worked
             preview_cols = ["record_id", "redcap_repeat_instance", "name1", "name2", "phone", "eml", "category", "assign_1", "accept_1", "gsresp_1", "welreq"]
             _cols = [c for c in preview_cols if c in flagged.columns]
-            safe_print("[WELREQ] Sample (up to 5):")
-            safe_print(flagged[_cols].head(5).to_string(index=False))
+            # Only record IDs here: names/phones/emails are in welreq_followup.csv and the
+            # GUI welfare panel. Logs get copied around, so keep PHI out of them.
+            safe_print("[WELREQ] Record IDs: " + ", ".join(
+                flagged["record_id"].astype(str).head(20).tolist() if "record_id" in flagged.columns else []))
 
         # Emit follow-up CSV next to main output (always refresh for this run)
         try:
