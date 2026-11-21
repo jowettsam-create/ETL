@@ -23,6 +23,7 @@ Current work and open problems are tracked in `TODO.md` — read it first.
 | `GS2RCAPI.py` | Core engine (~3,250 lines): fetch, transform, write CSV, upload. Also importable — the GUIs call `main()` directly when frozen. |
 | `GS2RCAPI_GUI.py` | "ADV" GUI (Tkinter): API or CSV input, date pickers, manual Build / Upload, welfare list, master list copy. |
 | `app.py` | **Streamlit web app** — stopgap replacement for both GUIs on PCs that can no longer run the `.exe`. Runs `GS2RCAPI.py` as a subprocess, credentials via env vars. |
+| `start_app.bat` | Double-click on Windows to start the app (localhost only; share via a tunnel such as ngrok). |
 | `.streamlit/` | `config.toml` (app settings) and `secrets.toml.example`. Real `secrets.toml` is git-ignored. |
 | `GS2RCAPI_GUI_Lite.py` | "LITE" GUI: one button. Asks REDCap for the last record, fetches everything since, builds, uploads. Production daily run. |
 | `build_release.py` | Builds both `.exe`s with PyInstaller and packages a release folder + zip. |
