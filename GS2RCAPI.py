@@ -2123,8 +2123,13 @@ def main():
     ap.add_argument("--responders", help="Path to Responder.csv (optional if using API mode)")
     ap.add_argument("--out", help="Output CSV path")
     ap.add_argument("--start-id", type=int, help="Starting REDCap record_id (required when building)")
-    ap.add_argument("--username", help="GoodSAM API username (email)")
-    ap.add_argument("--password", help="GoodSAM API password (or an API client secret gsk_..., with the client id as --username)")
+    # Credentials can also come from environment variables so callers (e.g. the
+    # Streamlit app) don't have to put secrets on the command line.
+    ap.add_argument("--username", default=os.environ.get("GOODSAM_USERNAME"),
+                    help="GoodSAM API username (email) (or env GOODSAM_USERNAME)")
+    ap.add_argument("--password", default=os.environ.get("GOODSAM_PASSWORD"),
+                    help="GoodSAM API password (or an API client secret gsk_..., with the client id as --username) "
+                         "(or env GOODSAM_PASSWORD)")
     ap.add_argument("--client-id", default=os.environ.get("GOODSAM_CLIENT_ID"),
                     help="GoodSAM OAuth API client id (or env GOODSAM_CLIENT_ID)")
     ap.add_argument("--client-secret", default=os.environ.get("GOODSAM_CLIENT_SECRET"),
@@ -2133,9 +2138,11 @@ def main():
     ap.add_argument("--end-date", help="End date (yyyy-MM-dd HH:mm:ss)")
     # REDCap API import options
     # **CHANGE THIS** if your REDCap server URL changes
-    ap.add_argument("--redcap-url", help="REDCap API URL (e.g. https://server/redcap/api/")
+    ap.add_argument("--redcap-url", default=os.environ.get("REDCAP_API_URL"),
+                    help="REDCap API URL (e.g. https://server/redcap/api/) (or env REDCAP_API_URL)")
     # REDCap API token (get this from your REDCap project's API settings page)
-    ap.add_argument("--redcap-token", help="REDCap API token")
+    ap.add_argument("--redcap-token", default=os.environ.get("REDCAP_API_TOKEN"),
+                    help="REDCap API token (or env REDCAP_API_TOKEN)")
     ap.add_argument("--redcap-batch-size", type=int, default=100, help="REDCap import batch size (default 100)")
     ap.add_argument("--redcap-insecure", action="store_true", help="Disable TLS verification for REDCap requests")
     # **CHANGE THIS** if your longitudinal project event name changes

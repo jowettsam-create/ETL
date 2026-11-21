@@ -26,3 +26,6 @@ env/
 *.env
 config.ini
 .claude/settings.local.json
+
+# --- Streamlit ---
+.streamlit/secrets.toml

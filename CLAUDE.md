@@ -22,6 +22,8 @@ Current work and open problems are tracked in `TODO.md` — read it first.
 |---|---|
 | `GS2RCAPI.py` | Core engine (~3,250 lines): fetch, transform, write CSV, upload. Also importable — the GUIs call `main()` directly when frozen. |
 | `GS2RCAPI_GUI.py` | "ADV" GUI (Tkinter): API or CSV input, date pickers, manual Build / Upload, welfare list, master list copy. |
+| `app.py` | **Streamlit web app** — stopgap replacement for both GUIs on PCs that can no longer run the `.exe`. Runs `GS2RCAPI.py` as a subprocess, credentials via env vars. |
+| `.streamlit/` | `config.toml` (app settings) and `secrets.toml.example`. Real `secrets.toml` is git-ignored. |
 | `GS2RCAPI_GUI_Lite.py` | "LITE" GUI: one button. Asks REDCap for the last record, fetches everything since, builds, uploads. Production daily run. |
 | `build_release.py` | Builds both `.exe`s with PyInstaller and packages a release folder + zip. |
 | `GS2RC-ADV.spec`, `GS2RC-LITE.spec` | **Generated** by PyInstaller during `build_release.py` (contain the building PC's absolute path). Not used as build input. |
@@ -80,7 +82,8 @@ python GS2RCAPI.py --client-id ID --client-secret gsk_... \
   --start-date "2026-11-01 00:00:00" --end-date "2026-11-01 23:59:59" \
   --start-id 1000 --out 261101.csv
 ```
-Legacy login: `--username EMAIL --password PASS`. A `gsk_...` value in `--password` is auto-detected as a
+Legacy login: `--username EMAIL --password PASS`. All four credentials can also come from env vars
+`GOODSAM_USERNAME`, `GOODSAM_PASSWORD`, `REDCAP_API_URL`, `REDCAP_API_TOKEN`. A `gsk_...` value in `--password` is auto-detected as a
 client secret. `GOODSAM_CLIENT_ID` / `GOODSAM_CLIENT_SECRET` env vars also work (keeps secrets off the
 command line).
 
@@ -97,6 +100,27 @@ Other flags: `--redcap-batch-size` (CLI default 100; GUIs pass 500), `--redcap-i
 
 GUIs: `python GS2RCAPI_GUI.py` (ADV) or `python GS2RCAPI_GUI_Lite.py` (LITE). Credentials are stored with
 `keyring` (Windows Credential Manager) under `GoodSAM_ETL` and `GoodSAM_ETL_REDCAP`.
+
+### Streamlit web app (`app.py`)
+
+```bash
+pip install -r requirements-app.txt
+python -m streamlit run app.py
+```
+Opens at http://localhost:8501. Tabs: **Daily run** (= LITE button), **Custom date range** (= ADV build,
+API or CSV), **Upload a CSV**. Credentials come from `.streamlit/secrets.toml` or env vars
+(`GOODSAM_USERNAME`, `GOODSAM_PASSWORD`, `REDCAP_API_URL`, `REDCAP_API_TOKEN`); anything missing is typed
+in the sidebar for that session only. Set `APP_PASSWORD` whenever others reach it over the network.
+
+- Each browser session writes to its own temp folder; "Clear files" deletes it, and folders older than
+  12 h are swept. Raw API JSON is **off** by default.
+- The engine is run as a subprocess (not `main()` in-process) so concurrent sessions don't share `sys.argv`.
+  Credentials go in the environment and are masked in the displayed log.
+- In CSV mode the app strips GoodSAM credentials from the subprocess env — otherwise the engine would use
+  the API instead of the uploaded files.
+- Never use `st.stop()` inside a tab — it stops the whole script and hides the other tabs.
+- "Now" is NSW time (`Australia/Sydney`) regardless of the server's timezone.
+- Never deploy to Streamlit Community Cloud (public, third-party hosting; PHI). The Deploy button is hidden.
 
 ### Building the executables
 

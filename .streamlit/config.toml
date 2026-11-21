@@ -1,0 +1,11 @@
+[server]
+headless = true
+maxUploadSize = 200
+
+[browser]
+# Don't send usage statistics to Streamlit.
+gatherUsageStats = false
+
+[client]
+# Hides the "Deploy" button (it publishes to Streamlit's public cloud - not allowed: PHI).
+toolbarMode = "minimal"

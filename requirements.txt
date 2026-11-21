@@ -15,6 +15,9 @@ truststore>=0.9.0
 # REDCap integration
 PyCap>=2.0.0
 
+# Credential storage for the desktop GUIs (Windows Credential Manager)
+keyring>=23.0.0
+
 # Build tool
 PyInstaller>=5.0.0
 
