@@ -1,6 +1,28 @@
 # GoodSAM ETL – To-do list
 
 ## In progress
+- [ ] **Streamlit web app (`app.py`) – stopgap for PCs that can't run the exe.**
+  - Found 21 Nov 2026 (Connection check in the app):
+    - **Streamlit Community Cloud** (US servers): GoodSAM ✅, REDCap ❌ – REDCap's own server returns a bare
+      "403 Forbidden" to overseas servers. Streamlit Cloud's outbound IPs change without notice, so allowlisting
+      isn't viable. Cloud can still build the CSV; import it via REDCap's Data Import Tool (DD/MM/YYYY).
+    - **Home internet (Australia):** REDCap API ✅ (answers "You do not have permissions to use the API" to a fake
+      token). GoodSAM ✅.
+    - **Work PC:** REDCap ✅ from Python direct; app versions before 2026.11.21-5 sent REDCap through the
+      NSW Health proxy when `HTTPS_PROXY` was set → bare 403 (fixed: REDCap host added to `NO_PROXY`).
+      GoodSAM ❌ via Zscaler – workaround: export Alerts/Responders CSVs in the browser → app CSV mode.
+  - [ ] Get the full Daily run working on Sam's private PC (`python -m streamlit run app.py`).
+  - [ ] Cloud app (goodsamfix.streamlit.app): keep sharing private and `APP_PASSWORD` set; don't use Daily run there.
+
+- [ ] **Self-hosted website on a Raspberry Pi (free, permanent fix for "go to a website and upload").**
+  - Pi 4/5 (2 GB+), Raspberry Pi OS 64-bit, on home internet in Australia (REDCap + GoodSAM both reachable).
+  - Run `app.py` as a systemd service (start at boot, restart on crash).
+  - Public link via a free tunnel: **ngrok** (one permanent free `*.ngrok-free.app` address) or Cloudflare Tunnel
+    (quick tunnels are free but the address changes; permanent needs a domain).
+  - `APP_PASSWORD` mandatory; credentials in `.streamlit/secrets.toml` on the Pi only.
+  - Check a work PC's browser can open the tunnel link (Zscaler may block tunnel domains).
+  - Ask Claude for: Pi setup script + service file, ngrok steps, one-page user instructions.
+
 - [ ] **Connection problems on other computers.** Fixes are in release 2026.11.15:
   - Windows certificate store via `truststore`, for networks that intercept HTTPS
   - GoodSAM download now follows the system proxy settings
