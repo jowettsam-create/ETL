@@ -25,6 +25,7 @@ Current work and open problems are tracked in `TODO.md` — read it first.
 | `app.py` | **Streamlit web app** — stopgap replacement for both GUIs on PCs that can no longer run the `.exe`. Runs `GS2RCAPI.py` as a subprocess, credentials via env vars. |
 | `HOSTING.md` | **For IT:** what's needed to host the web app (network, secrets, Docker, access). |
 | `Dockerfile`, `.dockerignore` | Container build for the web app (tested: non-root, health check, no data/secrets in image). |
+| `start_shared.bat` | Double-click on Windows to start the app **and** share it via ngrok (address saved in `%USERPROFILE%\.streamlit\ngrok_domain.txt`). Sets `GOODSAM_SHARED=1`: the app refuses to open without `APP_PASSWORD`. |
 | `start_app.bat` | Double-click on Windows to start the app (localhost only; share via a tunnel such as ngrok). |
 | `.streamlit/` | `config.toml` (app settings) and `secrets.toml.example`. Real `secrets.toml` is git-ignored. |
 | `GS2RCAPI_GUI_Lite.py` | "LITE" GUI: one button. Asks REDCap for the last record, fetches everything since, builds, uploads. Production daily run. |

@@ -51,7 +51,7 @@ import GS2RCAPI as engine  # noqa: E402  (used for the REDCap "next record" look
 
 # Shown on the page so people can check they're running the latest download.
 # **Bump this on every change you push** (date + number for that day).
-APP_VERSION = "2026.11.22-4"
+APP_VERSION = "2026.11.22-5"
 
 # **CHANGE THIS** if the REDCap server moves
 DEFAULT_REDCAP_URL = "https://nswa-redcap.ambulance.nsw.gov.au/redcap/api/"
@@ -460,6 +460,15 @@ def daily_run(creds: dict, dry_run: bool, save_json: bool) -> None:
 # ---------------------------------------------------------------------------
 # Page
 # ---------------------------------------------------------------------------
+# start_shared.bat sets GOODSAM_SHARED=1 because it puts the app on the internet (ngrok).
+# Never serve it unlocked in that case.
+if os.environ.get("GOODSAM_SHARED") == "1" and not setting("APP_PASSWORD"):
+    st.title("GoodSAM → REDCap")
+    st.error("This app is being shared over the internet but no APP_PASSWORD is set, so it's locked. "
+             "Add APP_PASSWORD to %USERPROFILE%\\.streamlit\\secrets.toml on the computer running it, "
+             "then close both windows and run start_shared.bat again.")
+    st.stop()
+
 require_app_password()
 
 st.title("🚑 GoodSAM → REDCap")
