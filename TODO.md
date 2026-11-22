@@ -21,6 +21,12 @@
         or raise the IT ticket to allow `goodsamgateway.org` through Zscaler (ticket text drafted in chat 22 Nov).
   - [ ] Cloud app (goodsamfix.streamlit.app): keep sharing private and `APP_PASSWORD` set; don't use Daily run there.
 
+- [ ] **Interim hosting on Oracle Cloud Always Free (Sydney)** – ngrok is blocked by Zscaler on work PCs.
+  - Files and click-by-click guide: `deploy/oracle/README.md`; server install: `sudo bash setup.sh`.
+  - [ ] Create account (home region Sydney/Melbourne), VM, open ports 80/443, run setup.sh.
+  - [ ] Connection check from the server: does REDCap accept Oracle's Australian IP?
+  - [ ] Test from a work PC: does Zscaler allow the `*.sslip.io` address? If not, try a proper domain name.
+
 - [ ] **Self-hosted website on a Raspberry Pi (free, permanent fix for "go to a website and upload").**
   - Sam has an old Pi at home – continue this when home. Check the model (Pi 3 may be slow; 64-bit OS needed for pandas wheels).
   - Pi 4/5 (2 GB+), Raspberry Pi OS 64-bit, on home internet in Australia (REDCap + GoodSAM both reachable).

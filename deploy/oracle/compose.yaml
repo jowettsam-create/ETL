@@ -1,0 +1,29 @@
+# GoodSAM -> REDCap web app behind Caddy (automatic HTTPS).
+# Started by setup.sh / update.sh with:
+#   docker compose --env-file /etc/goodsam/compose.env -f compose.yaml up -d --build
+services:
+  app:
+    build: ../..
+    env_file: /etc/goodsam/goodsam.env   # credentials + APP_PASSWORD (created by setup.sh, root-only)
+    restart: unless-stopped
+    expose:
+      - "8501"                            # only reachable through Caddy, not directly
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}       # e.g. 203-0-113-5.sslip.io (set in /etc/goodsam/compose.env)
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data                  # HTTPS certificates
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
