@@ -25,6 +25,7 @@ Current work and open problems are tracked in `TODO.md` — read it first.
 | `app.py` | **Streamlit web app** — stopgap replacement for both GUIs on PCs that can no longer run the `.exe`. Runs `GS2RCAPI.py` as a subprocess, credentials via env vars. |
 | `HOSTING.md` | **For IT:** what's needed to host the web app (network, secrets, Docker, access). |
 | `Dockerfile`, `.dockerignore` | Container build for the web app (tested: non-root, health check, no data/secrets in image). |
+| `deploy/oracle/` | Free hosting on Oracle Cloud (Sydney): `setup.sh` (one-command server install), `update.sh`, `compose.yaml` (app + Caddy HTTPS), `Caddyfile`, `README.md` (click-by-click). Tested locally: app only reachable through Caddy; WebSocket works. |
 | `start_shared.bat` | Double-click on Windows to start the app **and** share it via ngrok (address built in; override in `%USERPROFILE%\.streamlit\ngrok_domain.txt`). Sets `GOODSAM_SHARED=1`: the app refuses to open without `APP_PASSWORD`. |
 | `start_app.bat` | Double-click on Windows to start the app (localhost only; share via a tunnel such as ngrok). |
 | `.streamlit/` | `config.toml` (app settings) and `secrets.toml.example`. Real `secrets.toml` is git-ignored. |
