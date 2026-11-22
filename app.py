@@ -51,7 +51,7 @@ import GS2RCAPI as engine  # noqa: E402  (used for the REDCap "next record" look
 
 # Shown on the page so people can check they're running the latest download.
 # **Bump this on every change you push** (date + number for that day).
-APP_VERSION = "2026.11.22-3"
+APP_VERSION = "2026.11.22-4"
 
 # **CHANGE THIS** if the REDCap server moves
 DEFAULT_REDCAP_URL = "https://nswa-redcap.ambulance.nsw.gov.au/redcap/api/"
@@ -394,6 +394,28 @@ def connection_check(rc_url: str) -> None:
                "blocked it.")
 
 
+def confirm_button(key: str, label: str, enabled: bool, prompt: str) -> bool:
+    """A button that asks "Yes / Cancel" before acting. Returns True once confirmed.
+
+    Used instead of "tick to confirm" checkboxes, which were hard to tap on tablets.
+    """
+    flag = f"{key}_pending"
+    if not st.session_state.get(flag):
+        if st.button(label, key=f"{key}_ask", disabled=not enabled, use_container_width=True):
+            st.session_state[flag] = True
+            st.rerun()
+        return False
+    st.warning(prompt)
+    yes_col, no_col = st.columns(2)
+    if yes_col.button("✅ Yes, upload", key=f"{key}_yes", type="primary", use_container_width=True):
+        st.session_state.pop(flag, None)
+        return True
+    if no_col.button("Cancel", key=f"{key}_no", use_container_width=True):
+        st.session_state.pop(flag, None)
+        st.rerun()
+    return False
+
+
 def daily_run(creds: dict, dry_run: bool, save_json: bool) -> None:
     """What the LITE app's button does. Returns early (never st.stop) so the other tabs still render."""
     try:
@@ -495,11 +517,17 @@ tab_daily, tab_custom, tab_upload = st.tabs(["Daily run", "Custom date range", "
 with tab_daily:
     st.write("Fetches everything since the last record in REDCap up to midnight today (NSW time), "
              "builds the REDCap file and uploads it.")
-    dry_run = st.checkbox("Build only — don't upload to REDCap (debug mode)", key="daily_dry")
-    save_json_daily = st.checkbox("Keep raw GoodSAM API JSON (debugging only, contains PHI)", key="daily_json")
+    with st.expander("Advanced"):
+        save_json_daily = st.toggle("Keep raw GoodSAM API JSON (debugging only, contains PHI)", key="daily_json")
 
-    if st.button("▶ Build + upload latest", type="primary", disabled=not (have_goodsam and have_redcap)):
-        daily_run(creds, dry_run, save_json_daily)
+    can_run = have_goodsam and have_redcap
+    go_col, test_col = st.columns(2)
+    go = go_col.button("▶ Build + upload latest", type="primary", disabled=not can_run,
+                       use_container_width=True, key="daily_go")
+    test = test_col.button("🔍 Build only (test, no upload)", disabled=not can_run,
+                           use_container_width=True, key="daily_test")
+    if go or test:
+        daily_run(creds, dry_run=test, save_json=save_json_daily)
 
 # --- Custom range (what the ADV app does) -----------------------------------
 with tab_custom:
@@ -526,7 +554,8 @@ with tab_custom:
     if source.startswith("CSV"):
         alerts_file = st.file_uploader("Alert CSV", type=["csv"], key="alerts_csv")
         responders_file = st.file_uploader("Responder CSV", type=["csv"], key="responders_csv")
-    save_json_custom = st.checkbox("Keep raw GoodSAM API JSON (debugging only, contains PHI)", key="custom_json")
+    with st.expander("Advanced"):
+        save_json_custom = st.toggle("Keep raw GoodSAM API JSON (debugging only, contains PHI)", key="custom_json")
     out_name = st.text_input("Output file name", value=f"{start_day:%y%m%d}-{end_day:%y%m%d}.csv")
 
     ready = (have_goodsam if source == "GoodSAM API" else bool(alerts_file and responders_file))
@@ -534,7 +563,7 @@ with tab_custom:
     if build_clicked and start_day > end_day:
         st.error("Start day must be on or before end day.")
     elif build_clicked:
-        name =os.path.basename(out_name.strip() or "output.csv")
+        name = os.path.basename(out_name.strip() or "output.csv")
         if not name.lower().endswith(".csv"):
             name += ".csv"
         out_path = os.path.join(workdir(), name)
@@ -559,10 +588,9 @@ with tab_custom:
     last = st.session_state.get("last_output")
     if last and os.path.isfile(last):
         st.divider()
-        st.write(f"Upload **{os.path.basename(last)}** to REDCap?")
-        confirm = st.checkbox("I've checked the file and want to upload it to the live REDCap project",
-                              key="custom_confirm")
-        if st.button("⬆ Upload to REDCap", disabled=not (confirm and have_redcap)):
+        st.write(f"Built: **{os.path.basename(last)}**. Check the results below, then upload.")
+        if confirm_button("custom_upload", "⬆ Upload to REDCap", have_redcap,
+                          f"Upload **{os.path.basename(last)}** to the live REDCap project?"):
             rc, log = run_engine(upload_args(last), creds, "REDCap upload")
             st.session_state.last_log = st.session_state.get("last_log", "") + "\n\n" + log
 
@@ -570,8 +598,8 @@ with tab_custom:
 with tab_upload:
     st.write("Upload a REDCap import CSV that was built earlier.")
     up = st.file_uploader("REDCap import CSV", type=["csv"], key="upload_csv")
-    confirm_up = st.checkbox("Upload this file to the live REDCap project", key="upload_confirm")
-    if st.button("⬆ Upload to REDCap", key="upload_btn", disabled=not (up and confirm_up and have_redcap)):
+    if confirm_button("file_upload", "⬆ Upload to REDCap", bool(up and have_redcap),
+                      f"Upload **{up.name if up else ''}** to the live REDCap project?") and up:
         path = os.path.join(workdir(), "upload_" + os.path.basename(up.name))
         with open(path, "wb") as fh:
             fh.write(up.getvalue())
